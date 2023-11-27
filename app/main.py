@@ -1,6 +1,7 @@
 # Uncomment this to pass the first stage
 import socket
 from dataclasses import dataclass
+import re
 
 @dataclass
 class Request:
@@ -53,20 +54,42 @@ def read_request(client_socket) -> Request:
     lines = request.split("\r\n")
     # extract the path from the first line
     path = lines[0].split()[1]
-    print(path)
-    return Request(method="GET", path=path, headers={}, body="")
+    # parse the headers information
+    headers = {}
+    header_pattern = re.compile(r"^(.*): (.*)$")
+    for line in lines[1:]:
+        if line == "":
+            break
+        key, value = header_pattern.match(line).groups()
+        headers[key] = value.strip()
+    return Request(method="GET", path=path, headers=headers, body="")
+
+
+def echo_handler(request: Request) -> Response:
+    message = request.path.split("/echo/")[1]
+    return Response(status="200 OK", headers={
+        "Content-Type": "text/plain",
+        "Content-Length": str(len(message))
+    }, body=message)
+
+
+def user_agent_handler(request: Request) -> Response:
+    # return the user agent in the body
+    user_agent = request.headers["User-Agent"]
+    return Response(status="200 OK", headers={
+        "Content-Type": "text/plain",
+        "Content-Length": str(len(user_agent))
+    }, body=user_agent)
 
 
 def router(request: Request) -> Response:
+    print(request)
     if request.path == "/":
         return Response(status="200 OK", headers={}, body="")
     elif request.path.startswith("/echo"):
-        # get the message
-        message = request.path.split("/echo/")[1]
-        return Response(status="200 OK", headers={
-            "Content-Type": "text/plain",
-            "Content-Length": str(len(message))
-        }, body=message)
+        return echo_handler(request)
+    elif request.path == "/user-agent":
+        return user_agent_handler(request)
     else:
         return Response(status="404", headers={}, body="")
 
