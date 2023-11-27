@@ -97,7 +97,7 @@ def file_handler(request: Request, directory: str) -> Response:
     with open(file_path, "r") as f:
         content = f.read()
     return Response(status="200 OK", headers={
-        "Content-Type": "application/octet-stream"
+        "Content-Type": "application/octet-stream",
         "Content-Length": str(len(content))
     }, body=content)
 
