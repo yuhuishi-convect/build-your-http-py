@@ -62,7 +62,7 @@ def router(request: Request) -> Response:
         return Response(status="200 OK", headers={}, body="")
     elif request.path.startswith("/echo"):
         # get the message
-        message = request.path.split("/")[-1]
+        message = request.path.split("/echo/")[1]
         return Response(status="200 OK", headers={
             "Content-Type": "text/plain",
             "Content-Length": str(len(message))
