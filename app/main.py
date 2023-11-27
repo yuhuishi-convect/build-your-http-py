@@ -89,7 +89,7 @@ def user_agent_handler(request: Request) -> Response:
 def file_handler(request: Request, directory: str) -> Response:
     # return the file content in the body
     # the path is in the form /file/<filename>
-    filename = request.path.split("/file/")[1]
+    filename = request.path.split("/files/")[1]
     file_path = os.path.join(directory, filename)
     if not os.path.exists(file_path):
         return Response(status="404", headers={}, body="")
@@ -111,7 +111,7 @@ def router(request: Request, directory: str) -> Response:
         return echo_handler(request)
     elif request.path == "/user-agent":
         return user_agent_handler(request)
-    elif request.path.startswith("/file"):
+    elif request.path.startswith("/files"):
         return file_handler(request, directory)
     else:
         return Response(status="404", headers={}, body="")
