@@ -1,17 +1,51 @@
 # Uncomment this to pass the first stage
 import socket
+from dataclasses import dataclass
+
+@dataclass
+class Request:
+    method: str
+    path: str
+    headers: dict
+    body: str
 
 
 def respond_200(client_socket):
     response = "HTTP/1.1 200 OK\r\n\r\n"
     client_socket.send(response.encode())
 
+def respond_404(client_socket):
+    response = "HTTP/1.1 404 Not Found\r\n\r\n"
+    client_socket.send(response.encode())
 
-def read_request(client_socket):
+
+def read_request(client_socket) -> Request:
     buffer_size = 1024
     request = client_socket.recv(buffer_size).decode()
-    print(request)
-    return request
+
+    # extract the path from the request
+    """
+    The request has the form 
+    GET /index.html HTTP/1.1
+
+    Host: localhost:4221
+    User-Agent: curl/7.64.1
+
+    """
+
+    # split the request into lines
+    lines = request.split("\r\n")
+    # extract the path from the first line
+    path = lines[0].split()[1]
+    print(path)
+    return Request(method="GET", path=path, headers={}, body="")
+
+
+def router(request: Request):
+    if request.path == "/":
+        return respond_200
+    else:
+        return respond_404
 
 
 def main():
@@ -22,8 +56,9 @@ def main():
     #
     server_socket = socket.create_server(("localhost", 4221), reuse_port=True)
     s, _ = server_socket.accept() # wait for client
-    read_request(s)
-    respond_200(s)
+    request = read_request(s)
+    respond_func = router(request)
+    respond_func(s)
 
 
 
