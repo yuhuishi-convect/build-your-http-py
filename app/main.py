@@ -58,15 +58,27 @@ def read_request(client_socket) -> Request:
     lines = request.split("\r\n")
     # extract the path from the first line
     path = lines[0].split()[1]
+    # method
+    method = lines[0].split()[0]
     # parse the headers information
     headers = {}
     header_pattern = re.compile(r"^(.*): (.*)$")
+    cursor = 1
     for line in lines[1:]:
+        cursor += 1
         if line == "":
             break
         key, value = header_pattern.match(line).groups()
         headers[key] = value.strip()
-    return Request(method="GET", path=path, headers=headers, body="")
+
+    # read the body
+    body = ""
+    for line in lines[cursor:]:
+        if line == "":
+            continue
+        body += line + "\r\n"
+
+    return Request(method=method, path=path, headers=headers, body=body)
 
 
 def echo_handler(request: Request) -> Response:
@@ -91,15 +103,23 @@ def file_handler(request: Request, directory: str) -> Response:
     # the path is in the form /file/<filename>
     filename = request.path.split("/files/")[1]
     file_path = os.path.join(directory, filename)
-    if not os.path.exists(file_path):
-        return Response(status="404", headers={}, body="")
+    if request.method == "GET":
+        if not os.path.exists(file_path):
+            return Response(status="404", headers={}, body="")
 
-    with open(file_path, "r") as f:
-        content = f.read()
-    return Response(status="200 OK", headers={
-        "Content-Type": "application/octet-stream",
-        "Content-Length": str(len(content))
-    }, body=content)
+        with open(file_path, "r") as f:
+            content = f.read()
+        return Response(status="200 OK", headers={
+            "Content-Type": "application/octet-stream",
+            "Content-Length": str(len(content))
+        }, body=content)
+    elif request.method == "POST":
+        # write the content to the file
+        content = request.body
+        with open(file_path, "w") as f:
+            f.write(content)
+        # return 201
+        return Response(status="201 Created", headers={}, body="")
 
 
 
