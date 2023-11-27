@@ -3,6 +3,9 @@ import socket
 from dataclasses import dataclass
 import re
 import threading
+import argparse
+import os.path
+import os
 
 @dataclass
 class Request:
@@ -83,7 +86,24 @@ def user_agent_handler(request: Request) -> Response:
     }, body=user_agent)
 
 
-def router(request: Request) -> Response:
+def file_handler(request: Request, directory: str) -> Response:
+    # return the file content in the body
+    # the path is in the form /file/<filename>
+    filename = request.path.split("/file/")[1]
+    file_path = os.path.join(directory, filename)
+    if not os.path.exists(file_path):
+        return Response(status="404", headers={}, body="")
+
+    with open(file_path, "r") as f:
+        content = f.read()
+    return Response(status="200 OK", headers={
+        "Content-Type": "text/plain",
+        "Content-Length": str(len(content))
+    }, body=content)
+
+
+
+def router(request: Request, directory: str) -> Response:
     print(request)
     if request.path == "/":
         return Response(status="200 OK", headers={}, body="")
@@ -91,29 +111,35 @@ def router(request: Request) -> Response:
         return echo_handler(request)
     elif request.path == "/user-agent":
         return user_agent_handler(request)
+    elif request.path.startswith("/file"):
+        return file_handler(request, directory)
     else:
         return Response(status="404", headers={}, body="")
 
 
-def handle_client(client_socket):
+def handle_client(client_socket, directory_to_serve: str):
     request = read_request(client_socket)
-    response = router(request)
+    response = router(request, directory_to_serve)
     respond(client_socket, response)
     client_socket.close()
 
 
 def main():
     # You can use print statements as follows for debugging, they'll be visible when running tests.
-    print("Logs from your program will appear here!")
 
-    # Uncomment this to pass the first stage
-    #
+    # parse the directory to server from the command line
+    # the directoy will be passed by --directory
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--directory", help="the directory to serve")
+    args = parser.parse_args()
+    directory = args.directory
+
     server_socket = socket.create_server(("localhost", 4221), reuse_port=True)
 
     # use threading to handle multiple requests
     while True:
         client_socket, client_address = server_socket.accept()
-        clinet_thread = threading.Thread(target=handle_client, args=(client_socket,))
+        clinet_thread = threading.Thread(target=handle_client, args=(client_socket, directory))
         clinet_thread.daemon = True
         clinet_thread.start()
 
