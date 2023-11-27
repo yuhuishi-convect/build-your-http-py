@@ -76,7 +76,7 @@ def read_request(client_socket) -> Request:
     for line in lines[cursor:]:
         if line == "":
             continue
-        body += line + "\r\n"
+        body += line 
 
     return Request(method=method, path=path, headers=headers, body=body)
 
