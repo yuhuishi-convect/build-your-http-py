@@ -10,8 +10,24 @@ class Request:
     body: str
 
 
-def respond_200(client_socket):
-    response = "HTTP/1.1 200 OK\r\n\r\n"
+@dataclass
+class Response:
+    status: str
+    headers: dict
+    body: str
+
+
+def respond(client_socket, response: Response):
+    """
+    Send the response to the client
+    """
+    if response.status == "404":
+        respond_404(client_socket)
+
+    headline = f"HTTP/1.1 {response.status}\r\n"
+    headers = "\r\n".join([f"{key}: {value}" for key, value in response.headers.items()])
+    body = response.body
+    response = headline + headers + "\r\n\r\n" + body
     client_socket.send(response.encode())
 
 def respond_404(client_socket):
@@ -41,11 +57,18 @@ def read_request(client_socket) -> Request:
     return Request(method="GET", path=path, headers={}, body="")
 
 
-def router(request: Request):
+def router(request: Request) -> Response:
     if request.path == "/":
-        return respond_200
+        return Response(status="200 OK", headers={}, body="")
+    elif request.path.startswith("/echo"):
+        # get the message
+        message = request.path.split("/")[-1]
+        return Response(status="200 OK", headers={
+            "Content-Type": "text/plain",
+            "Content-Length": str(len(message))
+        }, body=message)
     else:
-        return respond_404
+        return Response(status="404", headers={}, body="")
 
 
 def main():
@@ -57,8 +80,8 @@ def main():
     server_socket = socket.create_server(("localhost", 4221), reuse_port=True)
     s, _ = server_socket.accept() # wait for client
     request = read_request(s)
-    respond_func = router(request)
-    respond_func(s)
+    response = router(request)
+    respond(s, response)
 
 
 
