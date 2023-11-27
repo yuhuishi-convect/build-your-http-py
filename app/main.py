@@ -2,6 +2,7 @@
 import socket
 from dataclasses import dataclass
 import re
+import threading
 
 @dataclass
 class Request:
@@ -94,6 +95,13 @@ def router(request: Request) -> Response:
         return Response(status="404", headers={}, body="")
 
 
+def handle_client(client_socket):
+    request = read_request(client_socket)
+    response = router(request)
+    respond(client_socket, response)
+    client_socket.close()
+
+
 def main():
     # You can use print statements as follows for debugging, they'll be visible when running tests.
     print("Logs from your program will appear here!")
@@ -101,10 +109,13 @@ def main():
     # Uncomment this to pass the first stage
     #
     server_socket = socket.create_server(("localhost", 4221), reuse_port=True)
-    s, _ = server_socket.accept() # wait for client
-    request = read_request(s)
-    response = router(request)
-    respond(s, response)
+
+    # use threading to handle multiple requests
+    while True:
+        client_socket, client_address = server_socket.accept()
+        clinet_thread = threading.Thread(target=handle_client, args=(client_socket,))
+        clinet_thread.daemon = True
+        clinet_thread.start()
 
 
 
